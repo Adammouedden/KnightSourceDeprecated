@@ -1,90 +1,72 @@
-from vertexai import rag
-from vertexai.generative_models import GenerativeModel, Tool
-import vertexai
+from google import genai
+from google.genai import types
+import base64
+import os
+from dotenv import load_dotenv
 
-# Create a RAG Corpus, Import Files, and Generate a response
+load_dotenv()
+api_key = os.getenv("GOOGLE_CLOUD_API")
 
-#TODO(developer): Update and un-comment below lines
-PROJECT_ID = "gen-lang-client-0773414929"
-display_name = "KnightSources"
-paths = ["https://drive.google.com/drive/folders/1g3P0iCKid21JNfiMl46ddNSCAApe8GZW?dmr=1&ec=wgc-drive-hero-goto"]  # Supports Google Cloud Storage and Google Drive Links
+class RAG_Agent():
+    def __init__(self):
+        self.client = genai.Client(vertexai=True,api_key=api_key)
 
-# Initialize Vertex AI API once per session
-vertexai.init(project=PROJECT_ID, location="us-east4")
+    def generate(self, prompt: str):
 
-# Create RagCorpus
-# Configure embedding model, for example "text-embedding-005".
-embedding_model_config = rag.RagEmbeddingModelConfig(
-    vertex_prediction_endpoint=rag.VertexPredictionEndpoint(
-        publisher_model="publishers/google/models/text-embedding-005"
-    )
-)
-
-rag_corpus = rag.create_corpus(
-    display_name=display_name,
-    backend_config=rag.RagVectorDbConfig(
-        rag_embedding_model_config=embedding_model_config
-    ),
-)
-
-# Import Files to the RagCorpus
-rag.import_files(
-    rag_corpus.name,
-    paths,
-    # Optional
-    transformation_config=rag.TransformationConfig(
-        chunking_config=rag.ChunkingConfig(
-            chunk_size=512,
-            chunk_overlap=100,
-        ),
-    ),
-    max_embedding_requests_per_min=1000,  # Optional
-)
-
-# Direct context retrieval
-rag_retrieval_config = rag.RagRetrievalConfig(
-    top_k=3,  # Optional
-    filter=rag.Filter(vector_distance_threshold=0.5),  # Optional
-)
-response = rag.retrieval_query(
-    rag_resources=[
-        rag.RagResource(
-            rag_corpus=rag_corpus.name,
-            # Optional: supply IDs from `rag.list_files()`.
-            # rag_file_ids=["rag-file-1", "rag-file-2", ...],
-        )
-    ],
-    text="What is RAG and why it is helpful?",
-    rag_retrieval_config=rag_retrieval_config,
-)
-print(response)
-
-# Enhance generation
-# Create a RAG retrieval tool
-rag_retrieval_tool = Tool.from_retrieval(
-    retrieval=rag.Retrieval(
-        source=rag.VertexRagStore(
-            rag_resources=[
-                rag.RagResource(
-                    rag_corpus=rag_corpus.name,  # Currently only 1 corpus is allowed.
-                    # Optional: supply IDs from `rag.list_files()`.
-                    # rag_file_ids=["rag-file-1", "rag-file-2", ...],
+        model = "gemini-2.5-flash"
+        contents = [
+            types.Content(
+            role="user",
+            parts=[{"text": f"{prompt}"}])
+        ]
+        tools = [
+            types.Tool(
+            retrieval=types.Retrieval(
+                vertex_rag_store=types.VertexRagStore(
+                rag_resources=[
+                    types.VertexRagStoreRagResource(
+                    rag_corpus="projects/gen-lang-client-0773414929/locations/us-east4/ragCorpora/4611686018427387904"
+                    )
+                ],
                 )
-            ],
-            rag_retrieval_config=rag_retrieval_config,
-        ),
-    )
-)
+            )
+            )
+        ]
 
-# Create a Gemini model instance
-rag_model = GenerativeModel(
-    model_name="gemini-2.0-flash-001", tools=[rag_retrieval_tool]
-)
+        generate_content_config = types.GenerateContentConfig(
+            temperature = 1,
+            top_p = 0.95,
+            seed = 0,
+            max_output_tokens = 65535,
+            safety_settings = [types.SafetySetting(
+            category="HARM_CATEGORY_HATE_SPEECH",
+            threshold="OFF"
+            ),types.SafetySetting(
+            category="HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold="OFF"
+            ),types.SafetySetting(
+            category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold="OFF"
+            ),types.SafetySetting(
+            category="HARM_CATEGORY_HARASSMENT",
+            threshold="OFF"
+            )],
+            tools = tools,
+            thinking_config=types.ThinkingConfig(
+            thinking_budget=-1,
+            ),
+        )
 
-# Generate response
-response = rag_model.generate_content("What is RAG and why it is helpful?")
-print(response.text)
-# Example response:
-#   RAG stands for Retrieval-Augmented Generation.
-#   It's a technique used in AI to enhance the quality of responses
-# ...
+        for chunk in self.client.models.generate_content_stream(
+            model = model,
+            contents = contents,
+            config = generate_content_config,
+            ):
+            if not chunk.candidates or not chunk.candidates[0].content or not chunk.candidates[0].content.parts:
+                continue
+            print(chunk.text, end="")
+
+if __name__ == "__main__":
+    agent = RAG_Agent()
+    user_input = input("You: ")
+    print(f"RAG Bot: {agent.generate(user_input)}")
