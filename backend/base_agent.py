@@ -1,4 +1,8 @@
 from google import genai
+from google.genai import types
+
+from vertexai import rag
+
 from dotenv import load_dotenv
 import os
 
@@ -10,12 +14,14 @@ class Agent:
         
         key = os.getenv("GEMINI_API")
         self.client = genai.Client(api_key=key)
+        self.system_prompt = "You are an agent. Never respond in key-value pairs, only ever in text."
 
     def chat(self, prompt):
         self.memory.append({"User":prompt})
         self.input = str(self.memory).replace("[", "").replace("]", "")
         print(self.input)
         
+        config = types.GenerateContentConfig(system_instruction=self.system_prompt)
         response = self.client.models.generate_content(model='gemini-2.5-flash', contents=self.input)
         self.memory.append({"Agent":response.text})
         
