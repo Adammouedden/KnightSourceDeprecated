@@ -5,9 +5,9 @@ import vertexai
 # Create a RAG Corpus, Import Files, and Generate a response
 
 #TODO(developer): Update and un-comment below lines
-PROJECT_ID = "your-project-id"
-display_name = "test_corpus"
-paths = ["https://drive.google.com/file/d/123", "gs://my_bucket/my_files_dir"]  # Supports Google Cloud Storage and Google Drive Links
+PROJECT_ID = "gen-lang-client-0773414929"
+display_name = "KnightSources"
+paths = ["https://drive.google.com/drive/folders/1g3P0iCKid21JNfiMl46ddNSCAApe8GZW?dmr=1&ec=wgc-drive-hero-goto"]  # Supports Google Cloud Storage and Google Drive Links
 
 # Initialize Vertex AI API once per session
 vertexai.init(project=PROJECT_ID, location="us-east4")

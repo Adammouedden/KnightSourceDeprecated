@@ -19,10 +19,10 @@ class Agent:
     def chat(self, prompt):
         self.memory.append({"User":prompt})
         self.input = str(self.memory).replace("[", "").replace("]", "")
-        print(self.input)
+        #print(self.input)
         
         config = types.GenerateContentConfig(system_instruction=self.system_prompt)
-        response = self.client.models.generate_content(model='gemini-2.5-flash', contents=self.input)
+        response = self.client.models.generate_content(model='gemini-2.5-flash', contents=self.input, config=config,)
         self.memory.append({"Agent":response.text})
         
         return response.text
